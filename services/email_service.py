@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from pydantic import BaseModel, Field
 from typing import List, Optional
-from interfaces.models import EmailMessage
+from models.email import Email
 
 
 class ListEmailsRequest(BaseModel):
@@ -17,7 +17,7 @@ class ListEmailsRequest(BaseModel):
 
 class ListEmailsResponse(BaseModel):
     count: int
-    emails: List[EmailMessage]
+    emails: List[Email]
 
 
 class EmailService(ABC):

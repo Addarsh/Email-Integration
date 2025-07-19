@@ -13,8 +13,8 @@ from pydantic import BaseModel, Field
 from datetime import datetime
 
 from utils import Utils
-from interfaces.email_service import EmailService, ListEmailsRequest, ListEmailsResponse
-from interfaces.models import EmailMessage
+from services.email_service import EmailService, ListEmailsRequest, ListEmailsResponse
+from models.email import Email
 
 type Creds = Union[ExternalAccountCredentials, OAuth2Credentials]
 
@@ -102,8 +102,8 @@ class GmailMessage(BaseModel):
             return ""
         return res[0].value
 
-    def to_email_message(self) -> EmailMessage:
-        return EmailMessage(
+    def to_email_message(self) -> Email:
+        return Email(
             id=self.id,
             sender=self.sender,
             recipient=self.recipient,

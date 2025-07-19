@@ -10,6 +10,11 @@ class Utils:
     
     @staticmethod
     def timestamp_ms_to_datetime(timestamp_ms: int) -> datetime:
-        """Returns timestmap in milliseconds since epoch to datetime object."""
+        """Converts timestmap in milliseconds since epoch to datetime object."""
         timestamp_seconds: float = timestamp_ms / 1000
+        return datetime.fromtimestamp(timestamp=timestamp_seconds, tz=timezone.utc)
+    
+    @staticmethod
+    def timestamp_seconds_to_datetime(timestamp_seconds: int) -> datetime:
+        """Converts timestmap in seconds since epoch to datetime object."""
         return datetime.fromtimestamp(timestamp=timestamp_seconds, tz=timezone.utc)
