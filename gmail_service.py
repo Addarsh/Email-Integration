@@ -7,9 +7,10 @@ from google.oauth2.credentials import Credentials as OAuth2Credentials
 from google.auth.external_account_authorized_user import Credentials as ExternalAccountCredentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from utils import Utils
+from email_service import EmailService, ListEmailsRequest
 
 type Creds = Union[ExternalAccountCredentials, OAuth2Credentials]
 
@@ -20,7 +21,9 @@ class GmailMessage(BaseModel):
         TO = "To" # e.g John Doe <john.doe@gmail.com>
 
     class MimeType(StrEnum):
-        TEXT = "text/plain"
+        PLAIN_TEXT = "text/plain"
+        MULTIPART_ALTERNATIVE = "multipart/alternative"
+        MULTIPART_MIXED = "multipart/mixed"
 
     class MessagePart(BaseModel):
         class Header(BaseModel):
@@ -34,14 +37,11 @@ class GmailMessage(BaseModel):
         mimeType: str
         headers: List[Header]
         body: MessagePartBody
+        parts: List['GmailMessage.MessagePart'] = Field(default_factory=list)
 
     id: str
     internalDate: str
     payload: MessagePart
-
-    
-    def is_text_body(self) -> bool:
-        return self.payload.mimeType == GmailMessage.MimeType.TEXT
 
     @property
     def sender(self) -> str:
@@ -55,53 +55,94 @@ class GmailMessage(BaseModel):
     def subject(self) -> str:
         return self._get_header_value(GmailMessage.CommonHeaders.SUBJECT)
     
-    @property
-    def text_body(self) -> str:
-        """Returns text body of given Message and empty string if its mimeType is not text."""
-        if not self.is_text_body():
-            return ""
-        if self.payload.body.data is None:
-            return ""
-        return Utils.decode_b64_into_text(self.payload.body.data)
+    def get_plain_text_body(self) -> str:
+        """Returns plain text body of given Message."""
+
+        def helper(payload: GmailMessage.MessagePart) -> str:
+            if payload.mimeType not in set([GmailMessage.MimeType.MULTIPART_ALTERNATIVE, GmailMessage.MimeType.MULTIPART_MIXED, GmailMessage.MimeType.PLAIN_TEXT]):
+                return ""
+            
+            if len(payload.parts) == 0:
+                if payload.mimeType != GmailMessage.MimeType.PLAIN_TEXT:
+                    return ""
+                if  payload.body.data is None:
+                    return ""
+                
+                return Utils.decode_b64_into_text(payload.body.data)
+
+            text_bodies: List[str] = []
+            for part in payload.parts:
+                part_text = helper(part)
+                if len(part_text) > 0:
+                    text_bodies.append(part_text)
+
+            return "\n".join(text_bodies)
+        
+        return helper(self.payload)
     
     def _get_header_value(self, header_name: 'GmailMessage.CommonHeaders') -> str:
         res = list(filter(lambda h: h.name == header_name, self.payload.headers))
         if len(res) == 0:
             return ""
         return res[0].value
+    
+class GmailListMessagesRequest(BaseModel):
+    userId: str = "me"
+    q: Optional[str]
+    maxResults: int
+    pageToken: Optional[str] = None
 
-class GmailService:
+class GmailListMessagesResponse(BaseModel):
+    class IncompleteMessage(BaseModel):
+        id: str
+   
+    messages: List[IncompleteMessage] = Field(default_factory=list)
+    nextPageToken: Optional[str] = None
+
+
+class GmailService(EmailService):
     """Service to fetch and update messages from the user's Gmail."""
 
     def __init__(self):
-        pass
+        self.LIST_MESSAGES_PAGE_SIZE = 1
 
-    def list_emails(self, max_results: int=10):
-        """List maximum of given emails for given user."""
+    def list(self, list_emails_req: ListEmailsRequest):
+        """List up to a maximum number of emails for given user."""
         try:
             # Call the Gmail API
             creds = self._fetch_creds()
             service = build("gmail", "v1", credentials=creds)
-            results = service.users().messages().list(userId="me", maxResults=max_results).execute()
-            
-            messages = results.get("messages", [])
 
-            if not messages:
-                print("No messages found.")
-                return
+            cur_page_token = None
+            first_time = True
+            count = 0
+            while (count < list_emails_req.max_results and cur_page_token is not None) or first_time :                
+                req = GmailListMessagesRequest(q=list_emails_req.query, maxResults=self.LIST_MESSAGES_PAGE_SIZE, pageToken=cur_page_token)
+                results_dict = service.users().messages().list(**req.model_dump()).execute()
+                response = GmailListMessagesResponse(**results_dict)
 
-            print("Messages:")
-            for message in messages:
-                msg_dict = (
-                    service.users().messages().get(userId="me", id=message["id"]).execute()
-                )
-                msg = GmailMessage(**msg_dict)
-                if not msg.is_text_body():
-                    continue
-                print(f'Message ID: {message["id"]}')
-                print(f'Message Sender: {msg.sender}, recipient: {msg.recipient}, subject: {len(msg.subject)}')
-                print(f"Message body: ", msg.text_body)
-                print("\n\n")
+                messages = response.messages
+                if len(messages) == 0:
+                    print("No more messages found.")
+                    return
+
+                for message in messages:
+                    msg_dict = (
+                        service.users().messages().get(userId="me", id=message.id).execute()
+                    )
+                    msg = GmailMessage(**msg_dict)
+                    count += 1
+                    print(f'Message ID: {message.id}')
+                    print(f'Message Sender: {msg.sender}, recipient: {msg.recipient}, subject: {msg.subject}')
+                    print(f"Message body: ", msg.get_plain_text_body())
+                    print(f"Mime type: ", msg.payload.mimeType)
+                    print("\n\n\n\n")
+
+                if first_time:
+                    first_time = False
+
+                cur_page_token = response.nextPageToken
+                print(f"got results count: {count}, next page token: {cur_page_token}")
 
         except Exception as e:
             print(f"An error occurred when listing emails: {e}")
