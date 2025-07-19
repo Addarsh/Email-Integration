@@ -13,8 +13,8 @@ from pydantic import BaseModel, Field
 from datetime import datetime
 
 from utils import Utils
-from email_service import EmailService, ListEmailsRequest, ListEmailsResponse
-from models import EmailMessage
+from interfaces.email_service import EmailService, ListEmailsRequest, ListEmailsResponse
+from interfaces.models import EmailMessage
 
 type Creds = Union[ExternalAccountCredentials, OAuth2Credentials]
 

@@ -1,5 +1,5 @@
-from gmail_service import GmailService
-from email_service import ListEmailsRequest
+from services.gmail_service import GmailService
+from interfaces.email_service import ListEmailsRequest
 
 if __name__ == "__main__":
     gs = GmailService()
