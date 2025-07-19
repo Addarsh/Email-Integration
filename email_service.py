@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 from pydantic import BaseModel, Field
 from typing import List, Optional
+from models import EmailMessage
+
 
 class ListEmailsRequest(BaseModel):
     senders: List[str] = Field(default_factory=list)
@@ -13,7 +15,12 @@ class ListEmailsRequest(BaseModel):
         return " OR ".join([f"from:{sender}" for sender in self.senders])
 
 
+class ListEmailsResponse(BaseModel):
+    count: int
+    emails: List[EmailMessage]
+
+
 class EmailService(ABC):
     @abstractmethod
-    def list(self, list_emails_req: ListEmailsRequest):
+    def list(self, list_emails_req: ListEmailsRequest) -> ListEmailsResponse:
         pass
