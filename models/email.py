@@ -1,9 +1,12 @@
 from pydantic import BaseModel, field_serializer
 from datetime import datetime
-
+from typing import Optional
 
 class Email(BaseModel):
-    id: str
+    # Set by database manager automatically for both reads and writes.
+    pk: Optional[int] = None
+
+    id: str # Message ID associated with the email.
     sender: str
     recipient: str
     subject: str
