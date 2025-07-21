@@ -145,13 +145,9 @@ class EmailManager:
             # Filter request is valid.
             base_sql = """
             SELECT
-              e.pk, e.id, e.sender, e.recipient, e.subject, e.plain_text_body, e.received_at
+              pk, id, sender, recipient, subject, plain_text_body, received_at
             FROM
-              emails AS e
-            JOIN
-              fts_idx_emails AS fts
-            ON
-              e.pk = fts.rowid
+              emails
             """
             where_clauses = []
             params: List[Any] = []
@@ -172,21 +168,24 @@ class EmailManager:
                 # The entire FTS query is one string, which will be passed as ONE parameter.
                 search_clause_str = f"{join_predicate.join(search_clauses)}"
                 params.append(search_clause_str)
-                where_clauses.append("fts.fts_idx_emails MATCH ?")
+                
+                where_clauses.append("pk IN (SELECT rowId FROM fts_idx_emails WHERE fts_idx_emails MATCH ?)")
 
             if len(db_lookup_rules) > 0:
                 # e.g. e.col_1 = 'v1' AND e.col_2 = 'val_2'
                 lookup_clauses = []
                 for rule in db_lookup_rules:
-                    clause = f"e.{rule.column_name}"
+                    operator = ""
                     if rule.predicate == FilterEmailsRequest.Rule.Predicate.EQUALS:
-                        clause = f"{clause} = ?"
+                        operator = "="
                     elif rule.predicate == FilterEmailsRequest.Rule.Predicate.NOT_EQUALS:
-                        clause = f"{clause} != ?"
+                        operator = "!="
                     elif rule.predicate == FilterEmailsRequest.Rule.Predicate.LESS_THAN:
-                        clause = f"{clause} < ?"
+                        operator = "<"
                     else:
-                        clause = f"{clause} > ?"
+                        operator = ">"
+
+                    clause = f"{rule.column_name} {operator} ?"
                     lookup_clauses.append(clause)
                     params.append(rule.value)
                 

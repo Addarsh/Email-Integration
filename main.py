@@ -26,18 +26,18 @@ if __name__ == "__main__":
                     predicate=FilterEmailsRequest.Rule.Predicate.CONTAINS,
                     value="Chandrasekar"
                 ),
-                # FilterEmailsRequest.Rule(
-                #     column_name='received_at',
-                #     predicate=FilterEmailsRequest.Rule.Predicate.GREATER_THAN,
-                #     value=1752665984,
-                # ),
                 FilterEmailsRequest.Rule(
-                    column_name='subject',
-                    predicate=FilterEmailsRequest.Rule.Predicate.EQUALS,
-                    value="ThoughtSpot | Interview confirmation - Addarsh Chandrasekar",
-                )
+                    column_name='received_at',
+                    predicate=FilterEmailsRequest.Rule.Predicate.LESS_THAN,
+                    value=1752748114,
+                ),
+                # FilterEmailsRequest.Rule(
+                #     column_name='subject',
+                #     predicate=FilterEmailsRequest.Rule.Predicate.EQUALS,
+                #     value="ThoughtSpot | Interview confirmation - Addarsh Chandrasekar",
+                # )
             ],
-            predicate=FilterEmailsRequest.RulesCollection.CollectionPredicate.ANY
+            predicate=FilterEmailsRequest.RulesCollection.CollectionPredicate.ALL
         )
     )
     email_mgr.filter(filter_req)
