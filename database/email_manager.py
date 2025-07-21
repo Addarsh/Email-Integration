@@ -9,7 +9,6 @@ class EmailManager:
     def __init__(self, db_name: str) -> None:
         self._db_name = db_name
         self._create_table()
-        self._pk: int = 1
 
     def insert(self, emails: List[Email]):
         """Insert a batch of emails into the database in a single transaction."""
@@ -21,8 +20,8 @@ class EmailManager:
         try:
             conn = sqlite3.connect(self._db_name)
             for em in emails:
-                em.pk = self._pk
-                self._pk += 1
+                em.pk = Utils.unique_id()
+
             data = tuple([em.model_dump() for em in emails])
             with conn:
                 # Insert or ignore so that any duplicate email IDs are skipped during the write.
@@ -198,7 +197,7 @@ class EmailManager:
                 """
                 CREATE TABLE IF NOT EXISTS emails  (
                     pk INTEGER PRIMARY KEY,
-                    id TEXT NOT NULL,
+                    id TEXT NOT NULL UNIQUE,
                     sender TEXT NOT NULL,
                     recipient TEXT NOT NULL,
                     subject TEXT NOT NULL,

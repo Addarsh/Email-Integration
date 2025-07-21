@@ -2,6 +2,7 @@ import base64
 from datetime import datetime, timezone, timedelta
 from dateutil.relativedelta import relativedelta
 import re
+import uuid
 
 
 class Utils:
@@ -79,3 +80,11 @@ class Utils:
         # Convert the datetime object to a Unix timestamp (seconds since epoch)
         # .timestamp() is available from Python 3.3 onwards
         return int(past_date.timestamp())
+    
+    @staticmethod
+    def unique_id() -> int:
+        """
+        Returns unique ID that can fit within SQLite's 8 byte signed integer type.
+        Essentailly that means the max int value returned can be 2^63-1.
+        """
+        return uuid.uuid4().int & (1<<63)-1
