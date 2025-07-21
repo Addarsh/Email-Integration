@@ -1,0 +1,67 @@
+{
+    "collections": [
+         {
+            "description": "Email from thoughspot",
+            "predicate": "All",
+            "rules": [
+                {
+                    "field_name": "From",
+                    "predicate": "contains",
+                    "value": "sanaa"
+                },
+                {
+                    "field_name": "To",
+                    "predicate": "contains",
+                    "value": "Chandrasekar"
+                },
+                {
+                    "field_name": "Date Received",
+                    "predicate": "is less than",
+                    "value": "1 years"
+                }
+            ]
+        },
+        {
+            "description": "Rapid API payments",
+            "predicate": "Any",
+            "rules": [
+                {
+                    "field_name": "From",
+                    "predicate": "contains",
+                    "value": "rapidapi"
+                },
+                {
+                    "field_name": "Subject",
+                    "predicate": "contains",
+                    "value": "payment"
+                },
+                {
+                    "field_name": "Date Received",
+                    "predicate": "is less than",
+                    "value": "1 years"
+                }
+            ]
+        },
+        {
+            "description": "Rapid API subscription",
+            "predicate": "All",
+            "rules": [
+                {
+                    "field_name": "From",
+                    "predicate": "contains",
+                    "value": "rapidapi"
+                },
+                {
+                    "field_name": "Message",
+                    "predicate": "contains",
+                    "value": "ULTRA plan"
+                },
+                {
+                    "field_name": "Date Received",
+                    "predicate": "is less than",
+                    "value": "4 months"
+                }
+            ]
+        }
+    ]
+}

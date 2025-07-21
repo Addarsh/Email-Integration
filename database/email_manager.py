@@ -1,39 +1,7 @@
 import sqlite3
-from models.email import Email
+from models.email import Email, FilterEmailsRequest
 from typing import List, Any
 from utils import Utils
-from pydantic import BaseModel, Field
-from enum import StrEnum
-
-class FilterEmailsRequest(BaseModel):
-
-    class Rule(BaseModel):
-        class Predicate(StrEnum):
-            CONTAINS = "Contains"
-            NOT_CONTAINS = "Does Not Contain"
-            EQUALS = "Equals"
-            NOT_EQUALS = "Does Not Equal"
-            LESS_THAN = "Less Than"
-            GREATER_THAN = "Greater Than"
-        
-        column_name: str = Field(description="This must exactly match a valid column the table otherwise the filter will fail.")
-        predicate: Predicate
-        value: Any
-    
-    class RulesCollection(BaseModel):
-        class CollectionPredicate(StrEnum):
-            ANY = "Any"
-            ALL = "All"
-
-        rules: List['FilterEmailsRequest.Rule']
-        predicate: CollectionPredicate
-
-    
-    filter: RulesCollection
-
-    @property
-    def column_names(self) -> List[str]:
-        return [rule.column_name for rule in self.filter.rules]
 
 class EmailManager:
     _VALID_COLUMNS = ['pk', 'id', 'sender', 'recipient', 'subject', 'plain_text_body', 'received_at']
