@@ -16,15 +16,15 @@ if __name__ == "__main__":
     filter_req = FilterEmailsRequest(
         filter=FilterEmailsRequest.RulesCollection(
             rules=[
-                # FilterEmailsRequest.Rule(
-                #     column_name='sender',
-                #     predicate=FilterEmailsRequest.Rule.Predicate.CONTAINS,
-                #     value="thoughtspot"
-                # ),
+                FilterEmailsRequest.Rule(
+                    column_name='sender',
+                    predicate=FilterEmailsRequest.Rule.Predicate.CONTAINS,
+                    value="thoughtspot"
+                ),
                 FilterEmailsRequest.Rule(
                     column_name='recipient',
-                    predicate=FilterEmailsRequest.Rule.Predicate.CONTAINS,
-                    value="Chandrasekar"
+                    predicate=FilterEmailsRequest.Rule.Predicate.NOT_CONTAINS,
+                    value="chandrasekar"
                 ),
                 FilterEmailsRequest.Rule(
                     column_name='received_at',

@@ -152,24 +152,26 @@ class EmailManager:
             where_clauses = []
             params: List[Any] = []
             if len(search_rules) > 0:
-                # e.g. MATCH 'col_1 : {val_1} AND -col_2: {val_2}'
-                search_clauses: List[str] = []
+                # e.g. MATCH 'col_1 : {val_1} AND col_2: {val_2}'
+                search_contains_clauses: List[str] = []
+                search_does_not_contains_clauses: List[str] = []
                 for rule in search_rules:
-                    clause = ""
                     escaped_value = str(rule.value).replace('"', '""')
                     quoted_value = f'"{escaped_value}"'
+                    clause = f"{rule.column_name} : {quoted_value}"
                     if rule.predicate == FilterEmailsRequest.Rule.Predicate.CONTAINS:
-                        clause = f"{rule.column_name} : {quoted_value}"
+                        search_contains_clauses.append(clause)
                     else:
-                        # does not contain.
-                        clause = f"-{rule.column_name} : {quoted_value}"
-                    search_clauses.append(clause)
+                        search_does_not_contains_clauses.append(clause)
                 
                 # The entire FTS query is one string, which will be passed as ONE parameter.
-                search_clause_str = f"{join_predicate.join(search_clauses)}"
-                params.append(search_clause_str)
+                if len(search_contains_clauses) > 0:
+                    params.append(f"{join_predicate.join(search_contains_clauses)}")
+                    where_clauses.append("pk IN (SELECT rowId FROM fts_idx_emails WHERE fts_idx_emails MATCH ?)")
                 
-                where_clauses.append("pk IN (SELECT rowId FROM fts_idx_emails WHERE fts_idx_emails MATCH ?)")
+                if len(search_does_not_contains_clauses) > 0:
+                    params.append(f"{join_predicate.join(search_does_not_contains_clauses)}")
+                    where_clauses.append("pk NOT IN (SELECT rowId FROM fts_idx_emails WHERE fts_idx_emails MATCH ?)")
 
             if len(db_lookup_rules) > 0:
                 # e.g. e.col_1 = 'v1' AND e.col_2 = 'val_2'
