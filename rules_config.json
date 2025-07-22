@@ -24,6 +24,10 @@
                 {
                     "type": "Mark Message As",
                     "value": "Unread"
+                },
+                {
+                    "type": "Move Message To",
+                    "value": "Important"
                 }
             ]
         },

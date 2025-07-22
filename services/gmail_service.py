@@ -133,6 +133,16 @@ class GmailListMessagesResponse(BaseModel):
     nextPageToken: Optional[str] = None
 
 
+class GmailBatchUpdateEmailsRequest(BaseModel):
+    class Body(BaseModel):
+        ids: List[str]
+        addLabelIds: List[str]
+        removeLabelIds: List[str]
+
+    userId: str = "me"
+    body: Body
+
+
 class GmailService(EmailService):
     """Service to fetch and update messages from the user's Gmail."""
 
@@ -181,14 +191,14 @@ class GmailService(EmailService):
         try:
             creds = self._fetch_creds()
             service = build("gmail", "v1", credentials=creds)
-            service.users().messages().batchModify(
-                userId="me",
-                body={
-                    "ids": req.ids,
-                    "addLabelIds": req.add_label_ids,
-                    "removeLabelIds": req.remove_label_ids,
-                },
-            ).execute()
+            gmail_req = GmailBatchUpdateEmailsRequest(
+                body=GmailBatchUpdateEmailsRequest.Body(
+                    ids=req.ids,
+                    addLabelIds=req.add_label_ids,
+                    removeLabelIds=req.remove_label_ids,
+                )
+            )
+            service.users().messages().batchModify(**gmail_req.model_dump()).execute()
         except Exception as e:
             raise ValueError(
                 f"Error occured when updating emails: {req} with error: {e}"
