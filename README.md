@@ -12,3 +12,9 @@ python -m scripts.index_emails --email_senders support@rapidapi.com sanaa.p@thou
 ```
 python -m scripts.process_emails --log_level INFO
 ```
+
+## Unit Testing
+
+```
+python -m pytest
+```

@@ -35,8 +35,12 @@ class EmailManager:
     ]
 
     def __init__(self, db_name: str) -> None:
-        self._db_name = db_name
+        self._db_name: str = db_name
         self._create_table()
+
+    @property
+    def db_name(self) -> str:
+        return self._db_name
 
     def insert(self, emails: List[Email]):
         """Insert a batch of emails into the database in a single transaction."""
@@ -97,6 +101,7 @@ class EmailManager:
             logger.debug(
                 f"Read {len(emails)} emails with IDs: {[em.id for em in emails]} from database successfully"
             )
+            return emails
         except Exception as e:
             logger.error(
                 f"Failed read {len(email_ids)} Emails with IDs: {email_ids} with error: {e}"
@@ -105,7 +110,6 @@ class EmailManager:
         finally:
             if conn:
                 conn.close()
-            return emails
 
     def filter(self, req: FilterEmailsRequest) -> List[Email]:
         """
@@ -117,29 +121,8 @@ class EmailManager:
         conn = None
         emails = []
         try:
-            if len(req.column_names) == 0:
-                raise ValueError("No column names found in filter req")
-            if any(
-                [
-                    column_name not in set(EmailManager._VALID_COLUMNS)
-                    for column_name in req.column_names
-                ]
-            ):
-                raise ValueError("One or more column names in req are invalid")
-
-            join_predicate = ""
-            if (
-                req.filter.predicate
-                == FilterEmailsRequest.RulesCollection.CollectionPredicate.ALL
-            ):
-                join_predicate = " AND "
-            elif (
-                req.filter.predicate
-                == FilterEmailsRequest.RulesCollection.CollectionPredicate.ANY
-            ):
-                join_predicate = " OR "
-            else:
-                raise ValueError("Invalid predicate value in rules collection")
+            # Add spaces around AND or OR predicates.
+            join_predicate = f" {req.filter.predicate} "
 
             # so we need read the filters and create where clauses accoringly.
             # we start from lower predicates and then combine them with OR or AND depending
@@ -233,7 +216,9 @@ class EmailManager:
             where_condition = f"WHERE {join_predicate.join(where_clauses)}"
             final_query = base_sql + where_condition
 
-            logger.debug(f"Email filter for req: {req.model_dump_json(indent=2)} \nquery: {final_query}\n\nparams: {params}\n\n")
+            logger.debug(
+                f"Email filter for req: {req.model_dump_json(indent=2)} \nquery: {final_query}\n\nparams: {params}\n\n"
+            )
 
             conn = sqlite3.connect(self._db_name)
             for row in conn.execute(final_query, tuple(params)):
@@ -252,6 +237,7 @@ class EmailManager:
             logger.debug(
                 f"Found {len(emails)} emails with IDs: {[em.id for em in emails]} emails for filter req: {req.model_dump_json(indent=2)}."
             )
+            return emails
         except Exception as e:
             logger.error(
                 f"Failed to filter Emails from database for req: {req.model_dump_json(indent=2)} with error: {e}"
@@ -260,7 +246,6 @@ class EmailManager:
         finally:
             if conn:
                 conn.close()
-            return emails
 
     def _create_table(self):
         """Create Email table and associated indexes."""

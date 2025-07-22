@@ -41,8 +41,8 @@ class RulesProcessor:
     ) -> FilterEmailsRequest:
         """Transforms given collection of rules to a database filter request for Emails."""
         collection_predicate_map = {
-            EmailRulesConfig.EmailRulesCollection.CollectionPredicate.ALL: FilterEmailsRequest.RulesCollection.CollectionPredicate.ALL,
-            EmailRulesConfig.EmailRulesCollection.CollectionPredicate.ANY: FilterEmailsRequest.RulesCollection.CollectionPredicate.ANY,
+            EmailRulesConfig.EmailRulesCollection.CollectionPredicate.ALL: FilterEmailsRequest.RulesCollection.CollectionPredicate.AND,
+            EmailRulesConfig.EmailRulesCollection.CollectionPredicate.ANY: FilterEmailsRequest.RulesCollection.CollectionPredicate.OR,
         }
 
         db_collection_predicate = collection_predicate_map.get(

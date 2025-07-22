@@ -60,8 +60,8 @@ class FilterEmailsRequest(BaseModel):
 
     class RulesCollection(BaseModel):
         class CollectionPredicate(StrEnum):
-            ANY = "Any"
-            ALL = "All"
+            OR = "OR"
+            AND = "AND"
 
         predicate: CollectionPredicate
         rules: List["FilterEmailsRequest.Rule"]
