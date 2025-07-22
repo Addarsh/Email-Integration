@@ -16,11 +16,13 @@ There are two primary components:
     # or
     python3 --version
     ```
+
 * It's highly recommended to use a virtual environment to manage project dependencies.
 
 ### Steps
 
 1.  **Clone the Repository:**
+
     ```bash
     git clone https://github.com/Addarsh/Email-Integration.git
     cd Email-Integration
@@ -30,11 +32,13 @@ There are two primary components:
     Run these commands in the project's root directory:
 
     * **macOS / Linux:**
+
         ```bash
         python3 -m venv .venv
         source .venv/bin/activate
         ```
     * **Windows:**
+    
         ```cmd
         py -3.9 -m venv .venv  # Use `py -3.9` for Python 3.9, or just `python -m venv .venv` if it's your default
         .venv\Scripts\activate
