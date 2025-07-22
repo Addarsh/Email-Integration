@@ -1,5 +1,6 @@
 import logging
 import sys
+import argparse
 from services.gmail_service import GmailService
 from services.email_service import ListEmailIdsRequest, GetEmailsRequest
 from database.email_manager import EmailManager
@@ -9,16 +10,14 @@ from typing import List, Optional
 logger = logging.getLogger(__name__)
 
 
-def run():
+def run(max_emails_count: int, batch_size: int, email_senders: List[str]):
     gmail_service = GmailService()
     email_manager = EmailManager("emails.db")
 
-    max_emails_to_fetch = 22
-    batch_size = 10
     n = (
-        max_emails_to_fetch // batch_size
-        if max_emails_to_fetch % batch_size == 0
-        else (max_emails_to_fetch // batch_size + 1)
+        max_emails_count // batch_size
+        if max_emails_count % batch_size == 0
+        else (max_emails_count // batch_size + 1)
     )
 
     cur_page_token: Optional[str] = None
@@ -28,7 +27,7 @@ def run():
 
         # Fetch email ids.
         req = ListEmailIdsRequest(
-            senders=["support@rapidapi.com"],
+            senders=email_senders,
             cur_page_token=cur_page_token,
             page_size=batch_size,
         )
@@ -57,15 +56,43 @@ def run():
         emails.extend(response.emails)
 
     if len(emails) > 0:
-        logger.info(f"Indexing {len(emails)} emails")
         email_manager.insert(emails)
+        logger.info(f"Indexed {len(emails)} emails successfully")
     else:
         logger.info("No new emails to index")
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--log_level",
+        default="INFO",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        help="Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL). Default is INFO."
+    )
+    parser.add_argument(
+        "--email_senders",
+        type=str,
+        nargs='*',
+        default=[],
+        help="Filter emails by list of sender emails. Default is empty list."
+    )
+    parser.add_argument(
+        "--max_count",
+        type=int,
+        default=100,
+        help="Max number of emails to index. Default is 100."
+    )
+    parser.add_argument(
+        "--batch_size",
+        type=int,
+        default=10,
+        help="Batch size when fetching emails. Default is 10."
+    )
+    args = parser.parse_args()
+
     logging.basicConfig(
-        level=logging.INFO,
+        level=args.log_level,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         handlers=[
             logging.FileHandler("indexer.log"),  # Log to a file
@@ -73,7 +100,7 @@ if __name__ == "__main__":
         ],
     )
     try:
-        run()
+        run(max_emails_count=args.max_count, batch_size=args.batch_size, email_senders=args.email_senders)
     except Exception as e:
         logging.exception("Email indexing failed")
         sys.exit(1)

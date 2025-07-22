@@ -1,6 +1,7 @@
 import sys
 import logging
 import json
+import argparse
 from database.email_manager import EmailManager
 from models.rule import EmailRulesConfig
 from services.gmail_service import GmailService
@@ -175,10 +176,19 @@ def run():
         )
         email_service.batch_update_emails(update_req)
 
-
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--log_level",
+        default="INFO",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        help="Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL). Default is INFO."
+    )
+
+    args = parser.parse_args()
+
     logging.basicConfig(
-        level=logging.INFO,
+        level=args.log_level,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         handlers=[
             logging.FileHandler("processor.log"),  # Log to a file

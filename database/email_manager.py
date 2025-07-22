@@ -114,7 +114,6 @@ class EmailManager:
         It will intelligently query the right index (secondary or Full text search or both) depending on the column name
         and the predicate type.
         """
-        logger.debug(f"Filter request: {req}")
         conn = None
         emails = []
         try:
@@ -234,8 +233,7 @@ class EmailManager:
             where_condition = f"WHERE {join_predicate.join(where_clauses)}"
             final_query = base_sql + where_condition
 
-            logger.debug(f"Email filter for req: {req} \n{final_query}")
-            logger.debug(f"Email filter params for req: {req}: \n{params}")
+            logger.debug(f"Email filter for req: {req.model_dump_json(indent=2)} \nquery: {final_query}\n\nparams: {params}\n\n")
 
             conn = sqlite3.connect(self._db_name)
             for row in conn.execute(final_query, tuple(params)):
@@ -252,11 +250,11 @@ class EmailManager:
                 )
 
             logger.debug(
-                f"Found {len(emails)} emails with IDs: {[em.id for em in emails]} emails for filter req: {req}."
+                f"Found {len(emails)} emails with IDs: {[em.id for em in emails]} emails for filter req: {req.model_dump_json(indent=2)}."
             )
         except Exception as e:
             logger.error(
-                f"Failed to filter Emails from database for req: {req} with error: {e}"
+                f"Failed to filter Emails from database for req: {req.model_dump_json(indent=2)} with error: {e}"
             )
             raise EmailFilterDbError(f"Failed to filter Emails from database") from e
         finally:
