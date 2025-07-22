@@ -7,7 +7,8 @@ from enum import StrEnum
 
 class ListEmailsRequest(BaseModel):
     senders: List[str] = Field(default_factory=list)
-    max_results: int
+    cur_page_token: Optional[str] = None
+    page_size: int
 
     @property
     def query(self) -> Optional[str]:
@@ -17,8 +18,8 @@ class ListEmailsRequest(BaseModel):
 
 
 class ListEmailsResponse(BaseModel):
-    count: int
     emails: List[Email]
+    next_page_token: Optional[str]
 
 
 class BatchUpdateEmailsRequest(BaseModel):
@@ -37,7 +38,7 @@ class BatchUpdateEmailsRequest(BaseModel):
 
 class EmailService(ABC):
     @abstractmethod
-    def list(self, list_emails_req: ListEmailsRequest) -> ListEmailsResponse:
+    def list_emails(self, req: ListEmailsRequest) -> ListEmailsResponse:
         pass
 
     @abstractmethod

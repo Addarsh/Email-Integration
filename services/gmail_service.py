@@ -121,8 +121,8 @@ class GmailMessage(BaseModel):
 class GmailListMessagesRequest(BaseModel):
     userId: str = "me"
     q: Optional[str]
-    maxResults: int
     pageToken: Optional[str] = None
+    maxResults: int
 
 
 class GmailListMessagesResponse(BaseModel):
@@ -139,56 +139,42 @@ class GmailService(EmailService):
     def __init__(self):
         self.LIST_MESSAGES_PAGE_SIZE = 1
 
-    def list(self, list_emails_req: ListEmailsRequest) -> ListEmailsResponse:
+    def list_emails(self, req: ListEmailsRequest) -> ListEmailsResponse:
         """Fetches emails for the given user based on the request."""
-        final_response = ListEmailsResponse(count=0, emails=[])
+        list_emails_response = ListEmailsResponse(emails=[], next_page_token=None)
         try:
             # Call the Gmail API
             creds = self._fetch_creds()
             service = build("gmail", "v1", credentials=creds)
 
-            cur_page_token = None
-            first_time = True
-            while (
-                final_response.count < list_emails_req.max_results
-                and cur_page_token is not None
-            ) or first_time:
-                req = GmailListMessagesRequest(
-                    q=list_emails_req.query,
-                    maxResults=self.LIST_MESSAGES_PAGE_SIZE,
-                    pageToken=cur_page_token,
+            gmail_req = GmailListMessagesRequest(
+                q=req.query,
+                pageToken=req.cur_page_token,
+                maxResults=req.page_size,
+            )
+            results_dict = (
+                service.users().messages().list(**gmail_req.model_dump()).execute()
+            )
+            response = GmailListMessagesResponse(**results_dict)
+
+            messages = response.messages
+            if len(messages) == 0:
+                print("No more messages found.")
+                return list_emails_response
+
+            # Fetch messages.
+            for message in messages:
+                msg_dict = (
+                    service.users().messages().get(userId="me", id=message.id).execute()
                 )
-                results_dict = (
-                    service.users().messages().list(**req.model_dump()).execute()
-                )
-                response = GmailListMessagesResponse(**results_dict)
+                msg = GmailMessage(**msg_dict)
+                list_emails_response.emails.append(msg.to_email_message())
 
-                messages = response.messages
-                if len(messages) == 0:
-                    print("No more messages found.")
-                    return final_response
-
-                for message in messages:
-                    msg_dict = (
-                        service.users()
-                        .messages()
-                        .get(userId="me", id=message.id)
-                        .execute()
-                    )
-                    msg = GmailMessage(**msg_dict)
-                    final_response.count += 1
-                    final_response.emails.append(msg.to_email_message())
-
-                if first_time:
-                    first_time = False
-
-                cur_page_token = response.nextPageToken
-
-            return final_response
+            list_emails_response.next_page_token = response.nextPageToken
+            return list_emails_response
 
         except Exception as e:
-            print(f"An error occurred when listing emails: {e}")
-            return final_response
+            raise ValueError(f"List emails for req: {req} failed with error: {e}")
 
     def batch_update_emails(self, req: BatchUpdateEmailsRequest):
         """Batch modify given Email IDs with the following Labels."""
@@ -198,10 +184,10 @@ class GmailService(EmailService):
             service.users().messages().batchModify(
                 userId="me",
                 body={
-                    'ids': req.ids,
-                    'addLabelIds': req.add_label_ids,
-                    'removeLabelIds': req.remove_label_ids,
-                }
+                    "ids": req.ids,
+                    "addLabelIds": req.add_label_ids,
+                    "removeLabelIds": req.remove_label_ids,
+                },
             ).execute()
         except Exception as e:
             raise ValueError(
