@@ -1,7 +1,7 @@
 from pydantic import BaseModel, field_validator, ValidationInfo
 from typing import Any, List
 from enum import StrEnum
-from utils import Utils
+from common.utils import Utils
 
 
 class EmailRulesConfig(BaseModel):

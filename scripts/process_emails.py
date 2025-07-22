@@ -180,7 +180,7 @@ def run(rules_path: str):
         )
         email_service.batch_update_emails(update_req)
         logger.info(
-            f"Processed {len(emails)} for rule collection: {rule_collection.model_dump_json(indent=2)} successfully"
+            f"Processed {len(emails)} emails for rule collection: {rule_collection.model_dump_json(indent=2)}"
         )
 
 

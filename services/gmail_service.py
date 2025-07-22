@@ -13,7 +13,7 @@ from googleapiclient.discovery import build
 from pydantic import BaseModel, Field
 from datetime import datetime
 
-from utils import Utils
+from common.utils import Utils
 from services.email_service import (
     EmailService,
     ListEmailIdsRequest,

@@ -2,7 +2,7 @@ import logging
 import sqlite3
 from models.email import Email, FilterEmailsRequest
 from typing import List, Any
-from utils import Utils
+from common.utils import Utils
 
 logger = logging.getLogger(__name__)
 
