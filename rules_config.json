@@ -1,39 +1,8 @@
 {
     "collections": [
         {
-            "description": "Email from thoughspot",
-            "predicate": "All",
-            "rules": [
-                {
-                    "field_name": "From",
-                    "predicate": "contains",
-                    "value": "sanaa"
-                },
-                {
-                    "field_name": "To",
-                    "predicate": "contains",
-                    "value": "Chandrasekar"
-                },
-                {
-                    "field_name": "Date Received",
-                    "predicate": "is less than",
-                    "value": "1 years"
-                }
-            ],
-            "actions": [
-                {
-                    "type": "Mark Message As",
-                    "value": "Unread"
-                },
-                {
-                    "type": "Move Message To",
-                    "value": "Important"
-                }
-            ]
-        },
-        {
             "description": "Rapid API payments",
-            "predicate": "Any",
+            "predicate": "All",
             "rules": [
                 {
                     "field_name": "From",
@@ -53,8 +22,12 @@
             ],
             "actions": [
                 {
+                    "type": "Mark Message As",
+                    "value": "Read"
+                },
+                {
                     "type": "Move Message To",
-                    "value": "Important"
+                    "value": "Inbox"
                 }
             ]
         },
@@ -81,7 +54,7 @@
             "actions": [
                 {
                     "type": "Move Message To",
-                    "value": "Spam"
+                    "value": "Inbox"
                 }
             ]
         }
