@@ -1,10 +1,15 @@
+import logging
+import sys
 from services.gmail_service import GmailService
 from services.email_service import ListEmailIdsRequest, GetEmailsRequest
 from database.email_manager import EmailManager
 from models.email import Email
 from typing import List, Optional
 
-if __name__ == "__main__":
+logger = logging.getLogger(__name__)
+
+
+def run():
     gmail_service = GmailService()
     email_manager = EmailManager("emails.db")
 
@@ -28,7 +33,7 @@ if __name__ == "__main__":
             page_size=batch_size,
         )
         response = gmail_service.list_email_ids(req)
-        print(f"Got {len(response.email_ids)} emails in iteration: {i+1}")
+        logger.info(f"Got {len(response.email_ids)} emails in iteration: {i+1}")
 
         if response.next_page_token == None:
             # No more emails left to parse.
@@ -52,7 +57,23 @@ if __name__ == "__main__":
         emails.extend(response.emails)
 
     if len(emails) > 0:
-        print(f"Indexing {len(emails)} emails")
+        logger.info(f"Indexing {len(emails)} emails")
         email_manager.insert(emails)
     else:
-        print("No new emails to index")
+        logger.info("No new emails to index")
+
+
+if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        handlers=[
+            logging.FileHandler("indexer.log"),  # Log to a file
+            logging.StreamHandler(),  # Also log to the console
+        ],
+    )
+    try:
+        run()
+    except Exception as e:
+        logging.exception("Email indexing failed")
+        sys.exit(1)

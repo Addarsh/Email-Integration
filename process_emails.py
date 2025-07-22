@@ -1,10 +1,18 @@
+import sys
+import logging
+import json
 from database.email_manager import EmailManager
 from models.rule import EmailRulesConfig
 from services.gmail_service import GmailService
 from services.email_service import BatchUpdateEmailsRequest
 from models.email import FilterEmailsRequest, EmailColumnName, Email, EmailLabel
 from typing import List
-import json
+
+logger = logging.getLogger(__name__)
+
+
+class RulesProcessorError(Exception):
+    pass
 
 
 class RulesProcessor:
@@ -17,7 +25,7 @@ class RulesProcessor:
                 data = f.read()
             self._rule_config = EmailRulesConfig(**json.loads(data))
         except Exception as e:
-            raise ValueError(f"Failed to initialize RulesProcessor with error: {e}")
+            raise RulesProcessorError("Failed to initialize RulesProcessor") from e
 
     @property
     def collections(self) -> List[EmailRulesConfig.EmailRulesCollection]:
@@ -36,9 +44,10 @@ class RulesProcessor:
             rule_collection.predicate
         )
         if db_collection_predicate == None:
-            raise ValueError(
-                f"Invalid Rule Predicate value: {rule_collection.predicate}"
+            logger.error(
+                f"Invalid Collection Rule Predicate value in collection: {rule_collection}"
             )
+            raise RulesProcessorError("Invalid Collection Rule Predicate value")
 
         rule_column_map = {
             EmailRulesConfig.Rule.FieldName.FROM: EmailColumnName.SENDER,
@@ -60,11 +69,17 @@ class RulesProcessor:
         for rule in rule_collection.rules:
             column_name = rule_column_map.get(rule.field_name)
             if column_name == None:
-                raise ValueError(f"Invalid field name in Rule: {rule.field_name}")
+                logger.error(
+                    f"Invalid Rule Field name in collection: {rule_collection}"
+                )
+                raise RulesProcessorError("Invalid Rule Field name value")
 
             predicate = rule_predicate_map.get(rule.predicate)
             if predicate == None:
-                raise ValueError(f"Invalid predicate in Rule: {rule.predicate}")
+                logger.error(
+                    f"Invalid Rule Predicate value in collection: {rule_collection}"
+                )
+                raise RulesProcessorError("Invalid Rule Predicate value")
 
             value = rule.value
             if rule.field_name == EmailRulesConfig.Rule.FieldName.RECEIVED_DATE:
@@ -129,7 +144,10 @@ class RulesProcessor:
                         EmailRulesConfig.EmailRulesCollection.Action.Label.SPAM: EmailLabel.SPAM,
                     }
                     if mapping.get(action.value) == None:
-                        raise ValueError(f"Invalid Action label: {action.value}")
+                        logger.error(
+                            f"Invalid Action label in collection: {rule_collection}"
+                        )
+                        raise RulesProcessorError("Invalid Action label")
                     req.add_label_ids.append(mapping[action.value])
                     req.remove_label_ids.append(EmailLabel.INBOX)
 
@@ -149,17 +167,26 @@ def run():
     email_service = GmailService()
 
     for rule_collection in rules_processor.collections:
-        # convert to database request.
         filter_req = rules_processor.transform_to_db_request(rule_collection)
-        print("filter req: ", filter_req.model_dump_json(indent=2))
         emails: List[Email] = email_manager.filter(filter_req)
 
         update_req = rules_processor.create_batch_update_emails_request(
             emails, rule_collection
         )
-        print("update req: ", update_req.model_dump_json(indent=2))
         email_service.batch_update_emails(update_req)
 
 
 if __name__ == "__main__":
-    run()
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        handlers=[
+            logging.FileHandler("processor.log"),  # Log to a file
+            logging.StreamHandler(),  # Also log to the console
+        ],
+    )
+    try:
+        run()
+    except Exception as e:
+        logging.exception("Email indexing failed")
+        sys.exit(1)

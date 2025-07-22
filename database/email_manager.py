@@ -1,7 +1,26 @@
+import logging
 import sqlite3
 from models.email import Email, FilterEmailsRequest
 from typing import List, Any
 from utils import Utils
+
+logger = logging.getLogger(__name__)
+
+
+class EmailTablesCreationError(Exception):
+    pass
+
+
+class EmailInsertDbError(Exception):
+    pass
+
+
+class EmailReadDbError(Exception):
+    pass
+
+
+class EmailFilterDbError(Exception):
+    pass
 
 
 class EmailManager:
@@ -22,7 +41,7 @@ class EmailManager:
     def insert(self, emails: List[Email]):
         """Insert a batch of emails into the database in a single transaction."""
         if len(emails) == 0:
-            print("No emails to insert, nothing to do.")
+            logger.debug("No emails to insert in input.")
             return
 
         conn = None
@@ -39,9 +58,14 @@ class EmailManager:
                     data,
                 )
 
-            print(f"Inserted {len(emails)} emails into database successfully")
+            logger.debug(
+                f"Inserted {len(emails)} emails: {[em.id for em in emails]} successfully"
+            )
         except Exception as e:
-            print(f"Failed insert Email with error: {e}")
+            logger.error(
+                f"Failed to insert {len(emails)} emails: {[em.id for em in emails]} with error: {e}"
+            )
+            raise EmailInsertDbError("Failed to insert emails in database") from e
         finally:
             if conn:
                 conn.close()
@@ -49,7 +73,7 @@ class EmailManager:
     def read(self, email_ids: List[str]) -> List[Email]:
         """Reads emails with given IDs from the database."""
         if len(email_ids) == 0:
-            print("No email Ids to reads, nothing to do.")
+            logger.debug("No email Ids in input to read.")
             return []
 
         conn = None
@@ -70,9 +94,14 @@ class EmailManager:
                         received_at=Utils.timestamp_seconds_to_datetime(row[6]),
                     )
                 )
-            print(f"Read: {len(emails)} emails from database successfully")
+            logger.debug(
+                f"Read {len(emails)} emails with IDs: {[em.id for em in emails]} from database successfully"
+            )
         except Exception as e:
-            print(f"Failed read Emails with error: {e}")
+            logger.error(
+                f"Failed read {len(email_ids)} Emails with IDs: {email_ids} with error: {e}"
+            )
+            raise EmailReadDbError("Failed to read Emails") from e
         finally:
             if conn:
                 conn.close()
@@ -85,6 +114,7 @@ class EmailManager:
         It will intelligently query the right index (secondary or Full text search or both) depending on the column name
         and the predicate type.
         """
+        logger.debug(f"Filter request: {req}")
         conn = None
         emails = []
         try:
@@ -204,8 +234,8 @@ class EmailManager:
             where_condition = f"WHERE {join_predicate.join(where_clauses)}"
             final_query = base_sql + where_condition
 
-            print("final query: ", final_query)
-            print("params: ", params)
+            logger.debug(f"Email filter for req: {req} \n{final_query}")
+            logger.debug(f"Email filter params for req: {req}: \n{params}")
 
             conn = sqlite3.connect(self._db_name)
             for row in conn.execute(final_query, tuple(params)):
@@ -221,15 +251,21 @@ class EmailManager:
                     )
                 )
 
-            print(f"Found {len(emails)} emails using filter.")
+            logger.debug(
+                f"Found {len(emails)} emails with IDs: {[em.id for em in emails]} emails for filter req: {req}."
+            )
         except Exception as e:
-            print(f"Failed to filter Emails for req: {req} with error: {e}")
+            logger.error(
+                f"Failed to filter Emails from database for req: {req} with error: {e}"
+            )
+            raise EmailFilterDbError(f"Failed to filter Emails from database") from e
         finally:
             if conn:
                 conn.close()
             return emails
 
     def _create_table(self):
+        """Create Email table and associated indexes."""
         conn = None
         try:
             conn = sqlite3.connect(self._db_name)
@@ -288,12 +324,14 @@ class EmailManager:
             END;
             """
             conn.executescript(triggers_sql)
-
             conn.commit()
 
-            print("Created table and indices successfully!")
+            logger.debug("Created Email table and indices successfully!")
         except Exception as e:
-            print(f"Failed insert Email with error: {e}")
+            logger.error(f"Failed create Email table and indices with error: {e}")
+            raise EmailTablesCreationError(
+                "Failed to initialize Email Tables and indices"
+            ) from e
         finally:
             if conn:
                 conn.close()

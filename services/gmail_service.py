@@ -1,4 +1,5 @@
 import os
+import logging
 from typing import Union, List, Optional
 from enum import StrEnum
 
@@ -22,6 +23,9 @@ from services.email_service import (
     GetEmailsResponse,
 )
 from models.email import Email
+
+
+logger = logging.getLogger(__name__)
 
 type Creds = Union[ExternalAccountCredentials, OAuth2Credentials]
 
@@ -145,6 +149,10 @@ class GmailBatchUpdateEmailsRequest(BaseModel):
     body: Body
 
 
+class GmailAPIError(Exception):
+    pass
+
+
 class GmailService(EmailService):
     """Service to fetch and update messages from the user's Gmail."""
 
@@ -176,7 +184,8 @@ class GmailService(EmailService):
             return list_email_ids_response
 
         except Exception as e:
-            raise ValueError(f"List emails for req: {req} failed with error: {e}")
+            logger.error(f"List Emails failed for req: {req} with error: {e}")
+            raise GmailAPIError("List emails failed") from e
 
     def get_emails(self, req: GetEmailsRequest) -> GetEmailsResponse:
         """Get emails for given request."""
@@ -192,10 +201,12 @@ class GmailService(EmailService):
 
             return response
         except Exception as e:
-            raise ValueError(f"Get emails for req: {req} failed with error: {e}")
+            logger.error(f"Get Emails failed for req: {req} with error: {e}")
+            raise GmailAPIError("Get Emails failed") from e
 
     def batch_update_emails(self, req: BatchUpdateEmailsRequest):
         """Batch modify given Email IDs with the following Labels."""
+        logger.debug(f"Batch update req: {req}")
         try:
             creds = self._fetch_creds()
             service = build("gmail", "v1", credentials=creds)
@@ -208,9 +219,8 @@ class GmailService(EmailService):
             )
             service.users().messages().batchModify(**gmail_req.model_dump()).execute()
         except Exception as e:
-            raise ValueError(
-                f"Error occured when updating emails: {req} with error: {e}"
-            )
+            logger.error(f"Update Emails failed for req: {req} with error: {e}")
+            raise GmailAPIError("Update Emails failed") from e
 
     def _fetch_creds(self) -> Creds:
         """Fetch OAuth2 credentials for user."""

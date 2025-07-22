@@ -3,3 +3,5 @@ credentials.json
 __pycache__/
 token.json
 emails.db
+indexer.log
+processor.log
