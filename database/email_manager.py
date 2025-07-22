@@ -3,8 +3,17 @@ from models.email import Email, FilterEmailsRequest
 from typing import List, Any
 from utils import Utils
 
+
 class EmailManager:
-    _VALID_COLUMNS = ['pk', 'id', 'sender', 'recipient', 'subject', 'plain_text_body', 'received_at']
+    _VALID_COLUMNS = [
+        "pk",
+        "id",
+        "sender",
+        "recipient",
+        "subject",
+        "plain_text_body",
+        "received_at",
+    ]
 
     def __init__(self, db_name: str) -> None:
         self._db_name = db_name
@@ -68,11 +77,11 @@ class EmailManager:
             if conn:
                 conn.close()
             return emails
-        
+
     def filter(self, req: FilterEmailsRequest) -> List[Email]:
         """
         Filter emails with the given criteria in the request.
-        
+
         It will intelligently query the right index (secondary or Full text search or both) depending on the column name
         and the predicate type.
         """
@@ -81,13 +90,24 @@ class EmailManager:
         try:
             if len(req.column_names) == 0:
                 raise ValueError("No column names found in filter req")
-            if any([column_name not in set(EmailManager._VALID_COLUMNS) for column_name in req.column_names]):
+            if any(
+                [
+                    column_name not in set(EmailManager._VALID_COLUMNS)
+                    for column_name in req.column_names
+                ]
+            ):
                 raise ValueError("One or more column names in req are invalid")
-            
+
             join_predicate = ""
-            if req.filter.predicate == FilterEmailsRequest.RulesCollection.CollectionPredicate.ALL:
+            if (
+                req.filter.predicate
+                == FilterEmailsRequest.RulesCollection.CollectionPredicate.ALL
+            ):
                 join_predicate = " AND "
-            elif req.filter.predicate == FilterEmailsRequest.RulesCollection.CollectionPredicate.ANY:
+            elif (
+                req.filter.predicate
+                == FilterEmailsRequest.RulesCollection.CollectionPredicate.ANY
+            ):
                 join_predicate = " OR "
             else:
                 raise ValueError("Invalid predicate value in rules collection")
@@ -96,14 +116,26 @@ class EmailManager:
             # we start from lower predicates and then combine them with OR or AND depending
             # on the outer predicate. Equals,Not Equals, Less Than, Greater Than
             # are converted to secondary index query i.e. where column =, <, >, value
-            # Contains is converted to FTS: MATCH 'column: "value"'.          
+            # Contains is converted to FTS: MATCH 'column: "value"'.
             search_rules: List[FilterEmailsRequest.Rule] = []
             db_lookup_rules: List[FilterEmailsRequest.Rule] = []
             for rule in req.filter.rules:
-                if rule.predicate in set([FilterEmailsRequest.Rule.Predicate.CONTAINS, FilterEmailsRequest.Rule.Predicate.NOT_CONTAINS]):
+                if rule.predicate in set(
+                    [
+                        FilterEmailsRequest.Rule.Predicate.CONTAINS,
+                        FilterEmailsRequest.Rule.Predicate.NOT_CONTAINS,
+                    ]
+                ):
                     # Full text search predicate.
                     search_rules.append(rule)
-                elif rule.predicate in set([FilterEmailsRequest.Rule.Predicate.EQUALS, FilterEmailsRequest.Rule.Predicate.NOT_EQUALS, FilterEmailsRequest.Rule.Predicate.LESS_THAN, FilterEmailsRequest.Rule.Predicate.GREATER_THAN]):
+                elif rule.predicate in set(
+                    [
+                        FilterEmailsRequest.Rule.Predicate.EQUALS,
+                        FilterEmailsRequest.Rule.Predicate.NOT_EQUALS,
+                        FilterEmailsRequest.Rule.Predicate.LESS_THAN,
+                        FilterEmailsRequest.Rule.Predicate.GREATER_THAN,
+                    ]
+                ):
                     # Main Table lookup predicate.
                     db_lookup_rules.append(rule)
                 else:
@@ -130,15 +162,21 @@ class EmailManager:
                         search_contains_clauses.append(clause)
                     else:
                         search_does_not_contains_clauses.append(clause)
-                
+
                 # The entire FTS query is one string, which will be passed as ONE parameter.
                 if len(search_contains_clauses) > 0:
                     params.append(f"{join_predicate.join(search_contains_clauses)}")
-                    where_clauses.append("pk IN (SELECT rowId FROM fts_idx_emails WHERE fts_idx_emails MATCH ?)")
-                
+                    where_clauses.append(
+                        "pk IN (SELECT rowId FROM fts_idx_emails WHERE fts_idx_emails MATCH ?)"
+                    )
+
                 if len(search_does_not_contains_clauses) > 0:
-                    params.append(f"{join_predicate.join(search_does_not_contains_clauses)}")
-                    where_clauses.append("pk NOT IN (SELECT rowId FROM fts_idx_emails WHERE fts_idx_emails MATCH ?)")
+                    params.append(
+                        f"{join_predicate.join(search_does_not_contains_clauses)}"
+                    )
+                    where_clauses.append(
+                        "pk NOT IN (SELECT rowId FROM fts_idx_emails WHERE fts_idx_emails MATCH ?)"
+                    )
 
             if len(db_lookup_rules) > 0:
                 # e.g. e.col_1 = 'v1' AND e.col_2 = 'val_2'
@@ -147,7 +185,9 @@ class EmailManager:
                     operator = ""
                     if rule.predicate == FilterEmailsRequest.Rule.Predicate.EQUALS:
                         operator = "="
-                    elif rule.predicate == FilterEmailsRequest.Rule.Predicate.NOT_EQUALS:
+                    elif (
+                        rule.predicate == FilterEmailsRequest.Rule.Predicate.NOT_EQUALS
+                    ):
                         operator = "!="
                     elif rule.predicate == FilterEmailsRequest.Rule.Predicate.LESS_THAN:
                         operator = "<"
@@ -157,7 +197,7 @@ class EmailManager:
                     clause = f"{rule.column_name} {operator} ?"
                     lookup_clauses.append(clause)
                     params.append(rule.value)
-                
+
                 final_clause = join_predicate.join(lookup_clauses)
                 where_clauses.append(final_clause)
 
@@ -166,7 +206,7 @@ class EmailManager:
 
             print("final query: ", final_query)
             print("params: ", params)
-            
+
             conn = sqlite3.connect(self._db_name)
             for row in conn.execute(final_query, tuple(params)):
                 emails.append(
@@ -180,7 +220,7 @@ class EmailManager:
                         received_at=Utils.timestamp_seconds_to_datetime(row[6]),
                     )
                 )
-                
+
             print(f"Found {len(emails)} emails using filter.")
         except Exception as e:
             print(f"Failed to filter Emails for req: {req} with error: {e}")

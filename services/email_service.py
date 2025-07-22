@@ -5,7 +5,7 @@ from models.email import Email
 from enum import StrEnum
 
 
-class ListEmailsRequest(BaseModel):
+class ListEmailIdsRequest(BaseModel):
     senders: List[str] = Field(default_factory=list)
     cur_page_token: Optional[str] = None
     page_size: int
@@ -17,9 +17,17 @@ class ListEmailsRequest(BaseModel):
         return " OR ".join([f"from:{sender}" for sender in self.senders])
 
 
-class ListEmailsResponse(BaseModel):
-    emails: List[Email]
+class ListEmailIdsResponse(BaseModel):
+    email_ids: List[str]
     next_page_token: Optional[str]
+
+
+class GetEmailsRequest(BaseModel):
+    email_ids: List[str]
+
+
+class GetEmailsResponse(BaseModel):
+    emails: List[Email]
 
 
 class BatchUpdateEmailsRequest(BaseModel):
@@ -38,7 +46,11 @@ class BatchUpdateEmailsRequest(BaseModel):
 
 class EmailService(ABC):
     @abstractmethod
-    def list_emails(self, req: ListEmailsRequest) -> ListEmailsResponse:
+    def list_email_ids(self, req: ListEmailIdsRequest) -> ListEmailIdsResponse:
+        pass
+
+    @abstractmethod
+    def get_emails(self, req: GetEmailsRequest) -> GetEmailsResponse:
         pass
 
     @abstractmethod

@@ -1,5 +1,5 @@
 from services.gmail_service import GmailService
-from services.email_service import ListEmailsRequest
+from services.email_service import ListEmailIdsRequest, GetEmailsRequest
 from database.email_manager import EmailManager
 from models.email import Email
 from typing import List, Optional
@@ -17,21 +17,42 @@ if __name__ == "__main__":
     )
 
     cur_page_token: Optional[str] = None
+    # emails to index.
     emails: List[Email] = []
     for i in range(n):
-        req = ListEmailsRequest(
+
+        # Fetch email ids.
+        req = ListEmailIdsRequest(
             senders=["support@rapidapi.com"],
             cur_page_token=cur_page_token,
             page_size=batch_size,
         )
-        response = gmail_service.list_emails(req)
-        print(f"Got {len(response.emails)} emails in iteration: {i+1}")
-        emails.extend(response.emails)
+        response = gmail_service.list_email_ids(req)
+        print(f"Got {len(response.email_ids)} emails in iteration: {i+1}")
 
         if response.next_page_token == None:
-            # No more results.
+            # No more emails left to parse.
             break
+
         cur_page_token = response.next_page_token
 
-    email_manager.insert(emails)
-    email_manager.read(email_ids=[email.id for email in emails])
+        # Only index new emails that are not already in the database.
+        existing_email_ids: List[str] = [
+            em.id for em in email_manager.read(response.email_ids)
+        ]
+        new_email_ids: List[str] = list(
+            set(response.email_ids).difference(set(existing_email_ids))
+        )
+        if len(new_email_ids) == 0:
+            continue
+
+        response = gmail_service.get_emails(
+            req=GetEmailsRequest(email_ids=new_email_ids)
+        )
+        emails.extend(response.emails)
+
+    if len(emails) > 0:
+        print(f"Indexing {len(emails)} emails")
+        email_manager.insert(emails)
+    else:
+        print("No new emails to index")

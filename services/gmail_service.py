@@ -15,9 +15,11 @@ from datetime import datetime
 from utils import Utils
 from services.email_service import (
     EmailService,
-    ListEmailsRequest,
-    ListEmailsResponse,
+    ListEmailIdsRequest,
+    ListEmailIdsResponse,
     BatchUpdateEmailsRequest,
+    GetEmailsRequest,
+    GetEmailsResponse,
 )
 from models.email import Email
 
@@ -149,11 +151,12 @@ class GmailService(EmailService):
     def __init__(self):
         self.LIST_MESSAGES_PAGE_SIZE = 1
 
-    def list_emails(self, req: ListEmailsRequest) -> ListEmailsResponse:
+    def list_email_ids(self, req: ListEmailIdsRequest) -> ListEmailIdsResponse:
         """Fetches emails for the given user based on the request."""
-        list_emails_response = ListEmailsResponse(emails=[], next_page_token=None)
+        list_email_ids_response = ListEmailIdsResponse(
+            email_ids=[], next_page_token=None
+        )
         try:
-            # Call the Gmail API
             creds = self._fetch_creds()
             service = build("gmail", "v1", credentials=creds)
 
@@ -166,25 +169,30 @@ class GmailService(EmailService):
                 service.users().messages().list(**gmail_req.model_dump()).execute()
             )
             response = GmailListMessagesResponse(**results_dict)
+            for message in response.messages:
+                list_email_ids_response.email_ids.append(message.id)
 
-            messages = response.messages
-            if len(messages) == 0:
-                print("No more messages found.")
-                return list_emails_response
-
-            # Fetch messages.
-            for message in messages:
-                msg_dict = (
-                    service.users().messages().get(userId="me", id=message.id).execute()
-                )
-                msg = GmailMessage(**msg_dict)
-                list_emails_response.emails.append(msg.to_email_message())
-
-            list_emails_response.next_page_token = response.nextPageToken
-            return list_emails_response
+            list_email_ids_response.next_page_token = response.nextPageToken
+            return list_email_ids_response
 
         except Exception as e:
             raise ValueError(f"List emails for req: {req} failed with error: {e}")
+
+    def get_emails(self, req: GetEmailsRequest) -> GetEmailsResponse:
+        """Get emails for given request."""
+        response = GetEmailsResponse(emails=[])
+        try:
+            creds = self._fetch_creds()
+            service = build("gmail", "v1", credentials=creds)
+            for email_id in req.email_ids:
+                msg_dict = (
+                    service.users().messages().get(userId="me", id=email_id).execute()
+                )
+                response.emails.append(GmailMessage(**msg_dict).to_email_message())
+
+            return response
+        except Exception as e:
+            raise ValueError(f"Get emails for req: {req} failed with error: {e}")
 
     def batch_update_emails(self, req: BatchUpdateEmailsRequest):
         """Batch modify given Email IDs with the following Labels."""
