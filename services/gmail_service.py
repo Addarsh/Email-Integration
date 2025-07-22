@@ -222,7 +222,7 @@ class GmailService(EmailService):
     def _fetch_creds(self) -> Creds:
         """Fetch OAuth2 credentials for user."""
         try:
-            SCOPES = [s.strip() for s in os.environ["GMAIL_SCOPES"].split(",")]
+            SCOPES = ["https://www.googleapis.com/auth/gmail.modify"]
             creds = None
             # The file stores the user's access and refresh tokens, and is
             # created automatically when the authorization flow completes for the first
