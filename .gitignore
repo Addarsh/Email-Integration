@@ -5,3 +5,4 @@ token.json
 emails.db
 indexer.log
 processor.log
+.env

@@ -2,12 +2,16 @@ import sys
 import logging
 import json
 import argparse
+import os
+from dotenv import load_dotenv
 from database.email_manager import EmailManager
 from models.rule import EmailRulesConfig
 from services.gmail_service import GmailService
 from services.email_service import BatchUpdateEmailsRequest
 from models.email import FilterEmailsRequest, EmailColumnName, Email, EmailLabel
 from typing import List
+
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
@@ -155,7 +159,7 @@ class RulesProcessor:
         return req
 
 
-def run():
+def run(rules_path: str):
     """
     Reads rules from rules JSON file and returns rules object.
 
@@ -163,8 +167,8 @@ def run():
 
     Actions are then taken on those emails according to the rules.
     """
-    rules_processor = RulesProcessor("rules_config.json")
-    email_manager = EmailManager("emails.db")
+    rules_processor = RulesProcessor(rules_path)
+    email_manager = EmailManager(os.environ["EMAIL_DB_PATH"])
     email_service = GmailService()
 
     for rule_collection in rules_processor.collections:
@@ -175,6 +179,10 @@ def run():
             emails, rule_collection
         )
         email_service.batch_update_emails(update_req)
+        logger.info(
+            f"Processed {len(emails)} for rule collection: {rule_collection.model_dump_json(indent=2)} successfully"
+        )
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -182,7 +190,12 @@ if __name__ == "__main__":
         "--log_level",
         default="INFO",
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-        help="Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL). Default is INFO."
+        help="Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL). Default is INFO.",
+    )
+    parser.add_argument(
+        "--rules_path",
+        default="rules_config.json",
+        help="Path to the rules configuration. Default is rules_config.json.",
     )
 
     args = parser.parse_args()
@@ -196,7 +209,7 @@ if __name__ == "__main__":
         ],
     )
     try:
-        run()
+        run(rules_path=args.rules_path)
     except Exception as e:
         logging.exception("Email indexing failed")
         sys.exit(1)

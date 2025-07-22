@@ -1,18 +1,22 @@
 import logging
 import sys
 import argparse
+import os
+from dotenv import load_dotenv
 from services.gmail_service import GmailService
 from services.email_service import ListEmailIdsRequest, GetEmailsRequest
 from database.email_manager import EmailManager
 from models.email import Email
 from typing import List, Optional
 
+load_dotenv()
+
 logger = logging.getLogger(__name__)
 
 
 def run(max_emails_count: int, batch_size: int, email_senders: List[str]):
     gmail_service = GmailService()
-    email_manager = EmailManager("emails.db")
+    email_manager = EmailManager(os.environ["EMAIL_DB_PATH"])
 
     n = (
         max_emails_count // batch_size
@@ -68,26 +72,26 @@ if __name__ == "__main__":
         "--log_level",
         default="INFO",
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-        help="Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL). Default is INFO."
+        help="Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL). Default is INFO.",
     )
     parser.add_argument(
         "--email_senders",
         type=str,
-        nargs='*',
+        nargs="*",
         default=[],
-        help="Filter emails by list of sender emails. Default is empty list."
+        help="Filter emails by list of sender emails. Default is empty list.",
     )
     parser.add_argument(
         "--max_count",
         type=int,
         default=100,
-        help="Max number of emails to index. Default is 100."
+        help="Max number of emails to index. Default is 100.",
     )
     parser.add_argument(
         "--batch_size",
         type=int,
         default=10,
-        help="Batch size when fetching emails. Default is 10."
+        help="Batch size when fetching emails. Default is 10.",
     )
     args = parser.parse_args()
 
@@ -100,7 +104,11 @@ if __name__ == "__main__":
         ],
     )
     try:
-        run(max_emails_count=args.max_count, batch_size=args.batch_size, email_senders=args.email_senders)
+        run(
+            max_emails_count=args.max_count,
+            batch_size=args.batch_size,
+            email_senders=args.email_senders,
+        )
     except Exception as e:
         logging.exception("Email indexing failed")
         sys.exit(1)

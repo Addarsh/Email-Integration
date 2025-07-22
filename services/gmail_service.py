@@ -224,26 +224,30 @@ class GmailService(EmailService):
 
     def _fetch_creds(self) -> Creds:
         """Fetch OAuth2 credentials for user."""
+        try:
+            SCOPES = [s.strip() for s in os.environ["GMAIL_SCOPES"].split(",")]
+            creds = None
+            # The file stores the user's access and refresh tokens, and is
+            # created automatically when the authorization flow completes for the first
+            # time.
+            token_path = os.environ["TOKEN_PATH"]
+            credentials_path = os.environ["CREDENTIALS_PATH"]
+            if os.path.exists(token_path):
+                creds = OAuth2Credentials.from_authorized_user_file(token_path, SCOPES)
+            # If there are no (valid) credentials available, let the user log in.
+            if not creds or not creds.valid:
+                if creds and creds.expired and creds.refresh_token:
+                    creds.refresh(Request())
+                else:
+                    flow = InstalledAppFlow.from_client_secrets_file(
+                        credentials_path, SCOPES
+                    )
+                    creds = flow.run_local_server(port=0)
+                # Save the credentials for the next run
+                with open(token_path, "w") as token:
+                    token.write(creds.to_json())
 
-        # If modifying these scopes, delete the file token.json.
-        SCOPES = ["https://www.googleapis.com/auth/gmail.modify"]
-        creds = None
-        # The file token.json stores the user's access and refresh tokens, and is
-        # created automatically when the authorization flow completes for the first
-        # time.
-        if os.path.exists("token.json"):
-            creds = OAuth2Credentials.from_authorized_user_file("token.json", SCOPES)
-        # If there are no (valid) credentials available, let the user log in.
-        if not creds or not creds.valid:
-            if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
-            else:
-                flow = InstalledAppFlow.from_client_secrets_file(
-                    "credentials.json", SCOPES
-                )
-                creds = flow.run_local_server(port=0)
-            # Save the credentials for the next run
-            with open("token.json", "w") as token:
-                token.write(creds.to_json())
-
-        return creds
+            return creds
+        except Exception as e:
+            logger.error(f"Failed to fetch credentials withe error: {e}")
+            raise GmailAPIError("Failed to fetch Credentials") from e
