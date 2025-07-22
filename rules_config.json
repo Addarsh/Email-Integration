@@ -23,11 +23,11 @@
             "actions": [
                 {
                     "type": "Mark Message As",
-                    "value": "Read"
+                    "value": "Unread"
                 },
                 {
                     "type": "Move Message To",
-                    "value": "Inbox"
+                    "value": "Spam"
                 }
             ]
         },
@@ -54,7 +54,7 @@
             "actions": [
                 {
                     "type": "Move Message To",
-                    "value": "Inbox"
+                    "value": "Spam"
                 }
             ]
         }
