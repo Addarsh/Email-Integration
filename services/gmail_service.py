@@ -156,18 +156,13 @@ class GmailAPIError(Exception):
 class GmailService(EmailService):
     """Service to fetch and update messages from the user's Gmail."""
 
-    def __init__(self):
-        self.LIST_MESSAGES_PAGE_SIZE = 1
-
     def list_email_ids(self, req: ListEmailIdsRequest) -> ListEmailIdsResponse:
         """Fetches emails for the given user based on the request."""
         list_email_ids_response = ListEmailIdsResponse(
             email_ids=[], next_page_token=None
         )
         try:
-            creds = self._fetch_creds()
-            service = build("gmail", "v1", credentials=creds)
-
+            service = self._build_service()
             gmail_req = GmailListMessagesRequest(
                 q=req.query,
                 pageToken=req.cur_page_token,
@@ -191,8 +186,7 @@ class GmailService(EmailService):
         """Get emails for given request."""
         response = GetEmailsResponse(emails=[])
         try:
-            creds = self._fetch_creds()
-            service = build("gmail", "v1", credentials=creds)
+            service = self._build_service()
             for email_id in req.email_ids:
                 msg_dict = (
                     service.users().messages().get(userId="me", id=email_id).execute()
@@ -208,8 +202,7 @@ class GmailService(EmailService):
         """Batch modify given Email IDs with the following Labels."""
         logger.debug(f"Batch update req: {req}")
         try:
-            creds = self._fetch_creds()
-            service = build("gmail", "v1", credentials=creds)
+            service = self._build_service()
             gmail_req = GmailBatchUpdateEmailsRequest(
                 body=GmailBatchUpdateEmailsRequest.Body(
                     ids=req.ids,
@@ -221,6 +214,10 @@ class GmailService(EmailService):
         except Exception as e:
             logger.error(f"Update Emails failed for req: {req} with error: {e}")
             raise GmailAPIError("Update Emails failed") from e
+
+    def _build_service(self):
+        creds = self._fetch_creds()
+        return build("gmail", "v1", credentials=creds)
 
     def _fetch_creds(self) -> Creds:
         """Fetch OAuth2 credentials for user."""
