@@ -13,7 +13,12 @@ from pydantic import BaseModel, Field
 from datetime import datetime
 
 from utils import Utils
-from services.email_service import EmailService, ListEmailsRequest, ListEmailsResponse
+from services.email_service import (
+    EmailService,
+    ListEmailsRequest,
+    ListEmailsResponse,
+    BatchUpdateEmailsRequest,
+)
 from models.email import Email
 
 type Creds = Union[ExternalAccountCredentials, OAuth2Credentials]
@@ -135,7 +140,7 @@ class GmailService(EmailService):
         self.LIST_MESSAGES_PAGE_SIZE = 1
 
     def list(self, list_emails_req: ListEmailsRequest) -> ListEmailsResponse:
-        """List up to a maximum number of emails for given user."""
+        """Fetches emails for the given user based on the request."""
         final_response = ListEmailsResponse(count=0, emails=[])
         try:
             # Call the Gmail API
@@ -178,18 +183,36 @@ class GmailService(EmailService):
                     first_time = False
 
                 cur_page_token = response.nextPageToken
-            
+
             return final_response
 
         except Exception as e:
             print(f"An error occurred when listing emails: {e}")
             return final_response
 
+    def batch_update_emails(self, req: BatchUpdateEmailsRequest):
+        """Batch modify given Email IDs with the following Labels."""
+        try:
+            creds = self._fetch_creds()
+            service = build("gmail", "v1", credentials=creds)
+            service.users().messages().batchModify(
+                userId="me",
+                body={
+                    'ids': req.ids,
+                    'addLabelIds': req.add_label_ids,
+                    'removeLabelIds': req.remove_label_ids,
+                }
+            ).execute()
+        except Exception as e:
+            raise ValueError(
+                f"Error occured when updating emails: {req} with error: {e}"
+            )
+
     def _fetch_creds(self) -> Creds:
         """Fetch OAuth2 credentials for user."""
 
         # If modifying these scopes, delete the file token.json.
-        SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
+        SCOPES = ["https://www.googleapis.com/auth/gmail.modify"]
         creds = None
         # The file token.json stores the user's access and refresh tokens, and is
         # created automatically when the authorization flow completes for the first

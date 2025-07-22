@@ -61,8 +61,24 @@ class EmailRulesConfig(BaseModel):
             ANY = "Any"
             ALL = "All"
 
+        class Action(BaseModel):
+            class Type(StrEnum):
+                MARK_MESSAGE = "Mark Message As"
+                MOVE_MESSAGE_TO = "Move Message To"
+
+            class Label(StrEnum):
+                INBOX = "Inbox"
+                SPAM = "Spam"
+                IMPORTANT = "Important"
+                READ = "Read"
+                UNREAD = "Unread"
+
+            type: Type
+            value: Label
+
         description: str
         predicate: CollectionPredicate
         rules: List["EmailRulesConfig.Rule"]
+        actions: List[Action]
 
     collections: List[EmailRulesCollection]

@@ -1,6 +1,6 @@
 {
     "collections": [
-         {
+        {
             "description": "Email from thoughspot",
             "predicate": "All",
             "rules": [
@@ -18,6 +18,12 @@
                     "field_name": "Date Received",
                     "predicate": "is less than",
                     "value": "1 years"
+                }
+            ],
+            "actions": [
+                {
+                    "type": "Mark Message As",
+                    "value": "Unread"
                 }
             ]
         },
@@ -40,6 +46,12 @@
                     "predicate": "is less than",
                     "value": "1 years"
                 }
+            ],
+            "actions": [
+                {
+                    "type": "Move Message To",
+                    "value": "Important"
+                }
             ]
         },
         {
@@ -60,6 +72,12 @@
                     "field_name": "Date Received",
                     "predicate": "is less than",
                     "value": "4 months"
+                }
+            ],
+            "actions": [
+                {
+                    "type": "Move Message To",
+                    "value": "Spam"
                 }
             ]
         }
